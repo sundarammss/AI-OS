@@ -8,78 +8,28 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as TasksRouteImport } from './routes/tasks'
-import { Route as SimulatorRouteImport } from './routes/simulator'
-import { Route as ResourcesRouteImport } from './routes/resources'
-import { Route as QuizzesRouteImport } from './routes/quizzes'
-import { Route as PortalRouteImport } from './routes/portal'
-import { Route as PeersRouteImport } from './routes/peers'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as ForumRouteImport } from './routes/forum'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CompetitionsRouteImport } from './routes/competitions'
-import { Route as ChatRouteImport } from './routes/chat'
-import { Route as AboutRouteImport } from './routes/about'
+import { Route as rootRouteImport } from './routes/__root.tsx'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminTeachersRouteImport } from './routes/admin/teachers'
-import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard'
-import { Route as AdminTeachersTeacherIdRouteImport } from './routes/admin/teachers.$teacherId'
-import { Route as AdminStudentsStudentIdRouteImport } from './routes/admin/students.$studentId'
+import { Route as AboutRouteImport } from './routes/about.tsx'
+import { Route as ChatRouteImport } from './routes/chat.tsx'
+import { Route as CompetitionsRouteImport } from './routes/competitions.tsx'
+import { Route as DashboardRouteImport } from './routes/dashboard.tsx'
+import { Route as ForumRouteImport } from './routes/forum.tsx'
+import { Route as LoginRouteImport } from './routes/login.tsx'
+import { Route as PeersRouteImport } from './routes/peers.tsx'
+import { Route as PortalRouteImport } from './routes/portal.tsx'
+import { Route as QuizzesRouteImport } from './routes/quizzes.tsx'
+import { Route as ResourcesRouteImport } from './routes/resources.tsx'
+import { Route as SimulatorRouteImport } from './routes/simulator.tsx'
+import { Route as TasksRouteImport } from './routes/tasks.tsx'
+import { Route as AdminDashboardRouteImport } from './routes/admin/dashboard.tsx'
+import { Route as AdminTeachersRouteImport } from './routes/admin/teachers.tsx'
+import { Route as AdminStudentsStudentIdRouteImport } from './routes/admin/students.$studentId.tsx'
+import { Route as AdminTeachersTeacherIdRouteImport } from './routes/admin/teachers.$teacherId.tsx'
 
-const TasksRoute = TasksRouteImport.update({
-  id: '/tasks',
-  path: '/tasks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SimulatorRoute = SimulatorRouteImport.update({
-  id: '/simulator',
-  path: '/simulator',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ResourcesRoute = ResourcesRouteImport.update({
-  id: '/resources',
-  path: '/resources',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QuizzesRoute = QuizzesRouteImport.update({
-  id: '/quizzes',
-  path: '/quizzes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PortalRoute = PortalRouteImport.update({
-  id: '/portal',
-  path: '/portal',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PeersRoute = PeersRouteImport.update({
-  id: '/peers',
-  path: '/peers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ForumRoute = ForumRouteImport.update({
-  id: '/forum',
-  path: '/forum',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CompetitionsRoute = CompetitionsRouteImport.update({
-  id: '/competitions',
-  path: '/competitions',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChatRoute = ChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -87,14 +37,59 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminTeachersRoute = AdminTeachersRouteImport.update({
-  id: '/admin/teachers',
-  path: '/admin/teachers',
+const CompetitionsRoute = CompetitionsRouteImport.update({
+  id: '/competitions',
+  path: '/competitions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForumRoute = ForumRouteImport.update({
+  id: '/forum',
+  path: '/forum',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeersRoute = PeersRouteImport.update({
+  id: '/peers',
+  path: '/peers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortalRoute = PortalRouteImport.update({
+  id: '/portal',
+  path: '/portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizzesRoute = QuizzesRouteImport.update({
+  id: '/quizzes',
+  path: '/quizzes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResourcesRoute = ResourcesRouteImport.update({
+  id: '/resources',
+  path: '/resources',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SimulatorRoute = SimulatorRouteImport.update({
+  id: '/simulator',
+  path: '/simulator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminDashboardRoute = AdminDashboardRouteImport.update({
@@ -102,15 +97,20 @@ const AdminDashboardRoute = AdminDashboardRouteImport.update({
   path: '/admin/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminTeachersTeacherIdRoute = AdminTeachersTeacherIdRouteImport.update({
-  id: '/$teacherId',
-  path: '/$teacherId',
-  getParentRoute: () => AdminTeachersRoute,
+const AdminTeachersRoute = AdminTeachersRouteImport.update({
+  id: '/admin/teachers',
+  path: '/admin/teachers',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AdminStudentsStudentIdRoute = AdminStudentsStudentIdRouteImport.update({
   id: '/admin/students/$studentId',
   path: '/admin/students/$studentId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminTeachersTeacherIdRoute = AdminTeachersTeacherIdRouteImport.update({
+  id: '/$teacherId',
+  path: '/$teacherId',
+  getParentRoute: () => AdminTeachersRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -252,81 +252,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tasks': {
-      id: '/tasks'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof TasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/simulator': {
-      id: '/simulator'
-      path: '/simulator'
-      fullPath: '/simulator'
-      preLoaderRoute: typeof SimulatorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/resources': {
-      id: '/resources'
-      path: '/resources'
-      fullPath: '/resources'
-      preLoaderRoute: typeof ResourcesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/quizzes': {
-      id: '/quizzes'
-      path: '/quizzes'
-      fullPath: '/quizzes'
-      preLoaderRoute: typeof QuizzesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portal': {
-      id: '/portal'
-      path: '/portal'
-      fullPath: '/portal'
-      preLoaderRoute: typeof PortalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/peers': {
-      id: '/peers'
-      path: '/peers'
-      fullPath: '/peers'
-      preLoaderRoute: typeof PeersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forum': {
-      id: '/forum'
-      path: '/forum'
-      fullPath: '/forum'
-      preLoaderRoute: typeof ForumRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/competitions': {
-      id: '/competitions'
-      path: '/competitions'
-      fullPath: '/competitions'
-      preLoaderRoute: typeof CompetitionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chat': {
-      id: '/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof ChatRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -336,18 +266,81 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/teachers': {
-      id: '/admin/teachers'
-      path: '/admin/teachers'
-      fullPath: '/admin/teachers'
-      preLoaderRoute: typeof AdminTeachersRouteImport
+    '/competitions': {
+      id: '/competitions'
+      path: '/competitions'
+      fullPath: '/competitions'
+      preLoaderRoute: typeof CompetitionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forum': {
+      id: '/forum'
+      path: '/forum'
+      fullPath: '/forum'
+      preLoaderRoute: typeof ForumRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/peers': {
+      id: '/peers'
+      path: '/peers'
+      fullPath: '/peers'
+      preLoaderRoute: typeof PeersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portal': {
+      id: '/portal'
+      path: '/portal'
+      fullPath: '/portal'
+      preLoaderRoute: typeof PortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quizzes': {
+      id: '/quizzes'
+      path: '/quizzes'
+      fullPath: '/quizzes'
+      preLoaderRoute: typeof QuizzesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/resources': {
+      id: '/resources'
+      path: '/resources'
+      fullPath: '/resources'
+      preLoaderRoute: typeof ResourcesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/simulator': {
+      id: '/simulator'
+      path: '/simulator'
+      fullPath: '/simulator'
+      preLoaderRoute: typeof SimulatorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/dashboard': {
@@ -357,12 +350,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/teachers/$teacherId': {
-      id: '/admin/teachers/$teacherId'
-      path: '/$teacherId'
-      fullPath: '/admin/teachers/$teacherId'
-      preLoaderRoute: typeof AdminTeachersTeacherIdRouteImport
-      parentRoute: typeof AdminTeachersRoute
+    '/admin/teachers': {
+      id: '/admin/teachers'
+      path: '/admin/teachers'
+      fullPath: '/admin/teachers'
+      preLoaderRoute: typeof AdminTeachersRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/admin/students/$studentId': {
       id: '/admin/students/$studentId'
@@ -370,6 +363,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/students/$studentId'
       preLoaderRoute: typeof AdminStudentsStudentIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/teachers/$teacherId': {
+      id: '/admin/teachers/$teacherId'
+      path: '/$teacherId'
+      fullPath: '/admin/teachers/$teacherId'
+      preLoaderRoute: typeof AdminTeachersTeacherIdRouteImport
+      parentRoute: typeof AdminTeachersRoute
     }
   }
 }
