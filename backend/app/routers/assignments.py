@@ -8,10 +8,12 @@ Teachers can review, approve, and assign marks.
 from __future__ import annotations
 
 import uuid
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,8 +23,15 @@ from app.database import get_db
 from app.models import Assignment, AssignmentSubmission, Student
 from app.rbac import require_role
 from app.services.streak_service import mark_study_activity
+from app.services.object_storage import (
+    ObjectNotFoundError,
+    StorageError,
+    get_storage,
+    stream_reader,
+)
 
 router = APIRouter(prefix="/api/v1/assignments", tags=["Assignments"])
+logger = logging.getLogger(__name__)
 
 # ── Storage ────────────────────────────────────────────────────────────
 
@@ -204,18 +213,30 @@ async def delete_assignment(
     if assignment.created_by != auth["id"]:
         raise HTTPException(403, "You can only delete your own assignments")
 
-    # Remove uploaded PDF files from disk
+    object_keys: set[str] = set()
+    local_paths: list[Path] = []
     sub_stmt = select(AssignmentSubmission).where(
         AssignmentSubmission.assignment_id == assignment_id
     )
     sub_result = await db.execute(sub_stmt)
     for sub in sub_result.scalars().all():
         fp = UPLOAD_DIR / sub.file_path
-        if fp.exists():
-            fp.unlink(missing_ok=True)
+        if fp.is_file():
+            local_paths.append(fp)
+        if sub.object_key:
+            object_keys.add(sub.object_key)
 
     await db.delete(assignment)
     await db.commit()
+    for local_path in local_paths:
+        local_path.unlink(missing_ok=True)
+    if object_keys:
+        for object_key in object_keys:
+            try:
+                storage = get_storage()
+                await run_in_threadpool(storage.delete_file, object_key)
+            except Exception:
+                logger.exception("Failed to delete Garage object for assignment id=%s", assignment_id)
 
 
 # ── Student: submit PDF ─────────────────────────────────────────────────
@@ -250,21 +271,45 @@ async def submit_assignment(
     if suffix != ".pdf":
         raise HTTPException(400, "Only PDF files are accepted")
 
-    content = await pdf.read()
+    content = await pdf.read(MAX_FILE_SIZE + 1)
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(400, "File size must not exceed 10 MB")
 
-    filename = f"{uuid.uuid4().hex}.pdf"
-    filepath = UPLOAD_DIR / filename
-    filepath.write_bytes(content)
+    stored_name = f"{uuid.uuid4().hex}.pdf"
+    object_key = f"assignments/{stored_name}"
+    try:
+        storage = get_storage()
+        await run_in_threadpool(
+            storage.upload_file,
+            content,
+            object_key,
+            pdf.content_type or "application/pdf",
+        )
+    except StorageError as exc:
+        raise HTTPException(status_code=503, detail="Document storage is unavailable") from exc
+    except Exception as exc:
+        logger.exception("Assignment submission upload failed")
+        raise HTTPException(status_code=503, detail="Document storage is unavailable") from exc
 
     sub = AssignmentSubmission(
         assignment_id=assignment_id,
         student_id=auth["id"],
-        file_path=filename,
+        file_path=stored_name,
+        object_key=object_key,
+        original_filename=pdf.filename or "submission.pdf",
+        content_type=pdf.content_type or "application/pdf",
+        size_bytes=len(content),
     )
-    db.add(sub)
-    await db.commit()
+    try:
+        db.add(sub)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        try:
+            await run_in_threadpool(storage.delete_file, object_key)
+        except Exception:
+            logger.exception("Failed to clean up orphaned Garage object after submission DB failure")
+        raise HTTPException(status_code=500, detail="Failed to save assignment submission")
     await db.refresh(sub)
     await mark_study_activity(db, auth["id"])
 
@@ -348,14 +393,26 @@ async def get_submission_file(
         raise HTTPException(403, "Access denied")
 
     filepath = UPLOAD_DIR / sub.file_path
-    if not filepath.exists():
-        raise HTTPException(404, "File not found on server")
+    if not sub.object_key and filepath.is_file():
+        return FileResponse(path=str(filepath), media_type="application/pdf", filename=f"submission_{submission_id}.pdf")
 
-    return FileResponse(
-        path=str(filepath),
-        media_type="application/pdf",
-        filename=f"submission_{submission_id}.pdf",
-    )
+    try:
+        storage = get_storage()
+        response = await run_in_threadpool(storage.open_stream, sub.object_key or sub.file_path)
+    except ObjectNotFoundError as exc:
+        raise HTTPException(404, "File not found") from exc
+    except StorageError as exc:
+        raise HTTPException(503, "Document storage is unavailable") from exc
+    except Exception as exc:
+        logger.exception("Assignment submission download failed id=%s", submission_id)
+        raise HTTPException(503, "Document storage is unavailable") from exc
+
+    def chunks():
+        yield from stream_reader(response, 64 * 1024)
+
+    return StreamingResponse(chunks(), media_type="application/pdf", headers={
+        "Content-Disposition": f'attachment; filename="submission_{submission_id}.pdf"'
+    })
 
 
 # ── Teacher: approve + assign marks ────────────────────────────────────

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   columnFilteringFeature,
@@ -28,6 +28,11 @@ import {
   Brain,
   Activity,
   Star,
+  ArrowRight,
+  CheckCircle2,
+  CircleAlert,
+  Gauge,
+  ShieldCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({ component: Dashboard });
@@ -480,114 +485,187 @@ function StudentPersonalDashboard() {
 
   const riskPct = Math.round(data.at_risk_probability * 100);
   const healthPct = data.academic_health_score;
+  const healthState = getHealthState(healthPct, riskPct);
+  const primaryAction = getPrimaryAction(riskPct, data.recommended_interventions.length);
+  const maxImpact = Math.max(...data.shap_explanation.map((feature) => Math.abs(feature.impact)), 1);
 
   return (
-    <main className="page-wrap px-4 pb-8 pt-8 flex-1 w-full box-border">
-      {/* Hero Header */}
-      <section className="mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 shadow-sm relative">
-        <div className="absolute -top-10 -right-10 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl"></div>
-        <div className="absolute -bottom-10 -left-10 h-64 w-64 rounded-full bg-purple-500/20 blur-3xl"></div>
-        <div className="relative z-10 px-6 sm:px-10 py-10 backdrop-blur-sm">
-          <p className="island-kicker mb-2 text-indigo-600 dark:text-indigo-400">My Dashboard</p>
-          <h1 className="font-headline text-4xl font-extrabold tracking-tight text-[var(--sea-ink)] sm:text-5xl">
-            Welcome back, <span className="bg-gradient-to-r from-indigo-600 to-purple-500 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-400">{user?.name}</span>
-          </h1>
-          <p className="mt-3 text-base sm:text-lg font-medium text-[var(--sea-ink-soft)] max-w-2xl">
-            Here's your academic health snapshot and personalized recommendations.
+    <main className="page-wrap w-full px-4 pb-10 pt-8 sm:px-6 sm:pt-10 lg:px-8">
+      <header className="mb-8 max-w-3xl sm:mb-10">
+        <p className="dashboard-overline">Your learning space</p>
+        <h1 className="dashboard-title mt-2">Good to see you, {firstName(user?.name)}.</h1>
+        <p className="mt-3 text-base leading-7 text-[var(--ink-muted)] sm:text-lg">
+          A clear view of what is going well and where a little attention can make the biggest difference.
+        </p>
+      </header>
+
+      <section className="dashboard-hero mb-6 grid overflow-hidden lg:grid-cols-[minmax(0,1.2fr)_minmax(19rem,0.8fr)]" aria-labelledby="health-summary-title">
+        <div className="p-6 sm:p-8 lg:p-10">
+          <div className={`dashboard-status ${healthState.badgeClass}`}>
+            <healthState.Icon className="h-4 w-4" aria-hidden="true" />
+            {healthState.label}
+          </div>
+          <h2 id="health-summary-title" className="dashboard-section-title mt-5 max-w-xl">
+            {healthState.heading}
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--ink-muted)] sm:text-base">
+            {healthState.description}
           </p>
+          <Link to={primaryAction.to} className="button-primary mt-7">
+            {primaryAction.label}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
         </div>
-      </section>
 
-      {/* KPI Cards */}
-      <section className="mb-8 grid gap-4 sm:grid-cols-4">
-        <KPICard
-          icon={<Star className="h-5 w-5" />}
-          label="CIS Score"
-          value={data.cis_score != null ? Number(data.cis_score.toFixed(1)) : ("—" as any)}
-          color="text-indigo-600 dark:text-indigo-400"
-          bg="bg-indigo-50 dark:bg-indigo-900/30"
-        />
-        <KPICard
-          icon={<Activity className="h-5 w-5" />}
-          label="Risk Score"
-          value={riskPct}
-          color={riskPct >= 60 ? "text-red-600 dark:text-red-400" : riskPct >= 40 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}
-          bg={riskPct >= 60 ? "bg-red-50 dark:bg-red-900/30" : riskPct >= 40 ? "bg-amber-50 dark:bg-amber-900/30" : "bg-emerald-50 dark:bg-emerald-900/30"}
-          suffix="%"
-        />
-        <KPICard
-          icon={<HeartPulse className="h-5 w-5" />}
-          label="Health Score"
-          value={healthPct}
-          color="text-emerald-600 dark:text-emerald-400"
-          bg="bg-emerald-50 dark:bg-emerald-900/30"
-        />
-        <div className="bg-surface-container-lowest rounded-xl ghost-border ambient-shadow flex items-center gap-4 rounded-2xl p-5">
-          <div className="rounded-xl border border-[var(--line)] bg-white p-3 text-purple-700 dark:text-purple-300 [&>svg]:stroke-[2.3]">
-            <Brain className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm text-[var(--sea-ink-soft)]">Burnout Status</p>
-            <p className="text-lg font-bold capitalize text-[var(--sea-ink)]">
-              {data.burnout_category === "none" ? "Healthy" : data.burnout_category.replace("_", " ")}
-            </p>
+        <div className="border-t border-[var(--border-subtle)] bg-[var(--canvas-tint)] p-6 sm:p-8 lg:border-l lg:border-t-0 lg:p-10">
+          <p className="text-sm font-semibold text-[var(--ink-muted)]">Academic health</p>
+          <div className="mt-5 flex items-center gap-5">
+            <div
+              className="health-ring"
+              style={{ "--health-progress": `${Math.max(0, Math.min(100, healthPct)) * 3.6}deg`, "--health-color": healthState.color } as React.CSSProperties}
+              role="progressbar"
+              aria-label="Academic health score"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={healthPct}
+            >
+              <span>{healthPct}</span>
+            </div>
+            <div>
+              <p className="text-xl font-bold tracking-tight text-[var(--ink-strong)]">out of 100</p>
+              <p className="mt-1 text-sm leading-5 text-[var(--ink-muted)]">A combined signal from your activity, assessments, and engagement.</p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Risk breakdown (SHAP) */}
-      {data.shap_explanation.length > 0 && (
-        <section className="bg-surface-container-lowest rounded-xl ghost-border ambient-shadow mb-8 rounded-2xl p-6">
-          <h2 className="mb-4 text-lg font-bold text-[var(--sea-ink)]">
-            What's Affecting Your Score
-          </h2>
-          <div className="space-y-3">
-            {data.shap_explanation.map((f) => {
-              const impact = Math.abs(f.impact);
-              const maxImpact = Math.max(...data.shap_explanation.map((x) => Math.abs(x.impact)));
-              const pct = maxImpact > 0 ? (impact / maxImpact) * 100 : 0;
-              const isNegative = f.impact > 0; // higher SHAP = higher risk = bad
-              return (
-                <div key={f.feature}>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span className="font-medium capitalize text-[var(--sea-ink)]">
-                      {f.feature.replace(/_/g, " ")}
-                    </span>
-                    <span className={isNegative ? "text-red-500" : "text-emerald-500"}>
-                      {isNegative ? "↑ Risk" : "↓ Risk"}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full rounded-full bg-[var(--progress-track)]">
-                    <div
-                      className={`h-2 rounded-full ${isNegative ? "bg-red-400" : "bg-emerald-400"}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <section className="mb-8 grid gap-3 sm:grid-cols-3" aria-label="Academic health metrics">
+        <StudentMetric icon={<Gauge />} label="Risk exposure" value={`${riskPct}%`} detail={riskLabel(riskPct)} tone={riskPct >= 60 ? "alert" : riskPct >= 40 ? "watch" : "positive"} />
+        <StudentMetric icon={<Star />} label="CIS score" value={data.cis_score != null ? data.cis_score.toFixed(1) : "—"} detail="Your current intelligence score" tone="accent" />
+        <StudentMetric icon={<Brain />} label="Burnout check" value={formatBurnout(data.burnout_category)} detail={burnoutDetail(data.burnout_category)} tone={data.burnout_category === "none" ? "positive" : "watch"} />
+      </section>
 
-      {/* Recommended interventions */}
-      {data.recommended_interventions.length > 0 && (
-        <section className="bg-surface-container-lowest rounded-xl ghost-border ambient-shadow rounded-2xl p-6">
-          <h2 className="mb-4 text-lg font-bold text-[var(--sea-ink)]">
-            <TrendingUp className="mr-2 inline h-5 w-5 text-[#4fb8b2]" />
-            Recommended Actions
-          </h2>
-          <ul className="space-y-2">
-            {data.recommended_interventions.map((msg, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-[var(--sea-ink-soft)]">
-                <span className="mt-0.5 inline-block h-2 w-2 flex-shrink-0 rounded-full bg-[#4fb8b2]" />
-                {msg}
-              </li>
-            ))}
-          </ul>
+      <section className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(19rem,0.92fr)]">
+        <section className="app-panel p-6 sm:p-7" aria-labelledby="signals-title">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 id="signals-title" className="dashboard-panel-title">Your learning signals</h2>
+              <p className="mt-1 text-sm leading-6 text-[var(--ink-muted)]">The factors currently having the strongest effect on your risk estimate.</p>
+            </div>
+            <span className="dashboard-key"><span className="bg-[var(--risk-high)]" />Needs attention <span className="ml-2 bg-[var(--success)]" />Supporting you</span>
+          </div>
+
+          {data.shap_explanation.length > 0 ? (
+            <ul className="mt-6 space-y-5">
+              {data.shap_explanation.map((feature) => {
+                const isRiskFactor = feature.impact > 0;
+                const percentage = (Math.abs(feature.impact) / maxImpact) * 100;
+                return (
+                  <li key={feature.feature}>
+                    <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+                      <span className="font-semibold capitalize text-[var(--ink-strong)]">{feature.feature.replace(/_/g, " ")}</span>
+                      <span className={isRiskFactor ? "signal-risk" : "signal-positive"}>{isRiskFactor ? "Needs attention" : "Supporting you"}</span>
+                    </div>
+                    <div className="signal-track" role="progressbar" aria-label={`${feature.feature.replace(/_/g, " ")} impact`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(percentage)}>
+                      <div className={isRiskFactor ? "signal-fill-risk" : "signal-fill-positive"} style={{ width: `${percentage}%` }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <div className="empty-note mt-6">We need a little more recent learning activity before we can show your strongest signals.</div>
+          )}
         </section>
-      )}
+
+        <section className="app-panel p-6 sm:p-7" aria-labelledby="actions-title">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent)]">
+            <TrendingUp className="h-5 w-5" aria-hidden="true" />
+          </div>
+          <h2 id="actions-title" className="dashboard-panel-title mt-5">Suggested next steps</h2>
+          <p className="mt-1 text-sm leading-6 text-[var(--ink-muted)]">Small, practical actions based on your latest learning signals.</p>
+          {data.recommended_interventions.length > 0 ? (
+            <ul className="mt-5 space-y-4">
+              {data.recommended_interventions.map((message, index) => (
+                <li key={`${message}-${index}`} className="flex gap-3 text-sm leading-6 text-[var(--ink-muted)]">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden="true" />
+                  <span>{message}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="empty-note mt-5">No actions are needed right now. Keep following your course plan and check back after your next activity.</div>
+          )}
+        </section>
+      </section>
     </main>
+  );
+}
+
+function firstName(name?: string) {
+  return name?.trim().split(/\s+/)[0] || "there";
+}
+
+function riskLabel(risk: number) {
+  if (risk >= 60) return "Worth acting on this week";
+  if (risk >= 40) return "Keep an eye on this";
+  return "Currently low";
+}
+
+function formatBurnout(category: string) {
+  return category === "none" ? "Clear" : category.replace(/_/g, " ");
+}
+
+function burnoutDetail(category: string) {
+  return category === "none" ? "No current burnout pattern detected" : "A pattern worth checking in on";
+}
+
+function getPrimaryAction(risk: number, recommendationCount: number) {
+  if (risk >= 40 || recommendationCount > 0) return { to: "/tasks" as const, label: "Review your tasks" };
+  return { to: "/resources" as const, label: "Explore study resources" };
+}
+
+function getHealthState(health: number, risk: number) {
+  if (risk >= 60 || health < 50) {
+    return {
+      label: "Needs attention",
+      heading: "A few focused changes can improve your trajectory.",
+      description: "Your latest learning signals suggest it is worth making space for your highest-priority coursework this week.",
+      badgeClass: "dashboard-status-alert",
+      color: "var(--risk-high)",
+      Icon: CircleAlert,
+    };
+  }
+  if (risk >= 40 || health < 70) {
+    return {
+      label: "Worth watching",
+      heading: "You are on track, with a few signals to keep close.",
+      description: "A consistent routine and attention to the signals below can help protect your momentum.",
+      badgeClass: "dashboard-status-watch",
+      color: "var(--risk-watch)",
+      Icon: Activity,
+    };
+  }
+  return {
+    label: "Looking steady",
+    heading: "Your learning rhythm is in a healthy place.",
+    description: "Keep the routines that are working. Your latest activity points to a stable academic trajectory.",
+    badgeClass: "dashboard-status-positive",
+    color: "var(--success)",
+    Icon: ShieldCheck,
+  };
+}
+
+function StudentMetric({ icon, label, value, detail, tone }: { icon: React.ReactNode; label: string; value: string; detail: string; tone: "alert" | "watch" | "positive" | "accent" }) {
+  return (
+    <article className="metric-card">
+      <div className={`metric-icon metric-icon-${tone}`}>{icon}</div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-[var(--ink-muted)]">{label}</p>
+        <p className="mt-1 text-xl font-bold tracking-tight text-[var(--ink-strong)] capitalize">{value}</p>
+        <p className="mt-1 text-xs leading-5 text-[var(--ink-muted)]">{detail}</p>
+      </div>
+    </article>
   );
 }
 

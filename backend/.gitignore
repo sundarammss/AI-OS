@@ -15,6 +15,8 @@ htmlcov/
 .venv
 .env
 .env.*
+garage.toml
+
 
 # Runtime / local data
 *.log

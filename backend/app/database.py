@@ -38,3 +38,44 @@ async def get_db() -> AsyncSession:  # type: ignore[misc]
 async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    await _ensure_object_storage_columns()
+
+
+# Additive, idempotent column backfill for tables that already exist in
+# MySQL (create_all does not ALTER existing tables). Only ADD COLUMN is
+# performed — nothing is dropped or modified destructively.
+_OBJECT_STORAGE_COLUMNS: dict[str, list[tuple[str, str]]] = {
+    "assignment_submissions": [
+        ("object_key", "VARCHAR(500) NULL"),
+        ("original_filename", "VARCHAR(255) NULL"),
+        ("content_type", "VARCHAR(120) NULL"),
+        ("size_bytes", "INT NULL"),
+    ],
+    "study_resources": [
+        ("object_key", "VARCHAR(500) NULL"),
+        ("content_type", "VARCHAR(120) NULL"),
+        ("size_bytes", "INT NULL"),
+    ],
+}
+
+
+async def _ensure_object_storage_columns() -> None:
+    from sqlalchemy import text
+
+    async with engine.begin() as conn:
+        for table, columns in _OBJECT_STORAGE_COLUMNS.items():
+            for name, ddl_type in columns:
+                exists = (
+                    await conn.execute(
+                        text(
+                            "SELECT COUNT(*) FROM information_schema.columns "
+                            "WHERE table_schema = DATABASE() "
+                            "AND table_name = :tbl AND column_name = :col"
+                        ),
+                        {"tbl": table, "col": name},
+                    )
+                ).scalar()
+                if not exists:
+                    await conn.execute(
+                        text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl_type}")
+                    )

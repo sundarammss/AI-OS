@@ -494,7 +494,11 @@ class AssignmentSubmission(Base):
     id = Column(Integer, primary_key=True, index=True)
     assignment_id = Column(Integer, ForeignKey("assignments.id"), nullable=False)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=False)
-    file_path = Column(String(500), nullable=False)          # UUID-based filename
+    file_path = Column(String(500), nullable=False)          # legacy: stored UUID filename
+    object_key = Column(String(500), nullable=True)          # Garage object key (None = legacy file)
+    original_filename = Column(String(255), nullable=True)   # client-supplied name
+    content_type = Column(String(120), nullable=True)
+    size_bytes = Column(Integer, nullable=True)
     submitted_at = Column(DateTime(timezone=True), default=_utcnow)
     is_approved = Column(Integer, default=0)                 # 0=pending, 1=approved
     marks = Column(Float, nullable=True)                     # hidden from students
@@ -514,8 +518,11 @@ class StudyResource(Base):
     description = Column(Text, nullable=True)
     tags = Column(String(500), nullable=True)
     file_path = Column(String(500), nullable=False)
+    object_key = Column(String(500), nullable=True)          # Garage object key (None = legacy file / youtube)
     original_filename = Column(String(255), nullable=False)
     file_type = Column(String(20), nullable=False)
+    content_type = Column(String(120), nullable=True)
+    size_bytes = Column(Integer, nullable=True)
     teacher_id = Column(Integer, ForeignKey("teachers.id"), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), default=_utcnow)
 

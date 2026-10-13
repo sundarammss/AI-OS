@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ from app.database import async_session
 from app.models import StudyResource
 from app.services.embedding_service import index_study_resource
 from app.services.file_parser import extract_text_from_file
+from app.services.object_storage import get_storage, stream_reader
 from app.services.youtube_rag import VideoEntry, YouTubeIngestError, ingest_youtube_video, parse_youtube_url
 
 logger = logging.getLogger(__name__)
@@ -36,6 +38,7 @@ async def _load_resource_payload(resource_id: int) -> dict[str, Any] | None:
             "tags": resource.tags,
             "teacher_id": resource.teacher_id,
             "file_path": resource.file_path,
+            "object_key": resource.object_key,
         }
 
 
@@ -47,15 +50,26 @@ def process_resource_index_task(self, resource_id: int) -> dict[str, Any]:
         return {"resource_id": resource_id, "status": "missing"}
 
     file_path = UPLOAD_DIR / payload["file_path"]
-    if not file_path.exists():
-        logger.warning("Resource file missing for id=%s at %s", resource_id, file_path)
+    if not payload.get("object_key") and not file_path.is_file():
+        logger.warning("Resource file missing for id=%s", resource_id)
         return {"resource_id": resource_id, "status": "missing_file"}
-
+    temporary_path: Path | None = None
     try:
+        if payload.get("object_key"):
+            stored = get_storage().open_stream(payload["object_key"])
+            suffix = Path(payload["file_path"]).suffix or ".bin"
+            with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temporary:
+                temporary_path = Path(temporary.name)
+                for chunk in stream_reader(stored, 64 * 1024):
+                    temporary.write(chunk)
+            file_path = temporary_path
         extracted_text = extract_text_from_file(file_path)
     except Exception as exc:
         logger.warning("Text extraction failed for resource id=%s: %s", resource_id, exc)
         extracted_text = ""
+    finally:
+        if temporary_path:
+            temporary_path.unlink(missing_ok=True)
 
     document_text = extracted_text.strip() or (
         f"{payload['title']}\n{payload.get('description') or ''}\n{payload.get('tags') or ''}".strip()

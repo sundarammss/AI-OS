@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import uuid
+import logging
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from fastapi.responses import FileResponse
-from fastapi.responses import RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -27,8 +28,16 @@ from app.services.embedding_service import (
 from app.services.resource_processing import queue_resource_processing, queue_youtube_video_processing
 from app.services.streak_service import mark_study_activity
 from app.services.youtube_rag import parse_youtube_url, YouTubeIngestError
+from app.services.object_storage import (
+    ObjectNotFoundError,
+    StorageError,
+    content_disposition,
+    get_storage,
+    stream_reader,
+)
 
 router = APIRouter(prefix="/api/v1/resources", tags=["Study Resources"])
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "uploads" / "resources"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -91,13 +100,25 @@ async def upload_resource(
     if suffix not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail="Only PDF, DOCX, and TXT files are supported")
 
-    content = await file.read()
+    content = await file.read(MAX_FILE_SIZE + 1)
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File size must not exceed 20 MB")
 
     stored_name = f"{uuid.uuid4().hex}{suffix}"
-    stored_path = UPLOAD_DIR / stored_name
-    stored_path.write_bytes(content)
+    object_key = f"resources/{stored_name}"
+    try:
+        storage = get_storage()
+        await run_in_threadpool(
+            storage.upload_file,
+            content,
+            object_key,
+            file.content_type or "application/octet-stream",
+        )
+    except StorageError as exc:
+        raise HTTPException(status_code=503, detail="Document storage is unavailable") from exc
+    except Exception as exc:
+        logger.exception("Study resource upload failed")
+        raise HTTPException(status_code=503, detail="Document storage is unavailable") from exc
 
     resource: StudyResource | None = None
     try:
@@ -107,19 +128,26 @@ async def upload_resource(
             description=description.strip() or None,
             tags=tags.strip() or None,
             file_path=stored_name,
+            object_key=object_key,
             original_filename=original_filename,
             file_type=suffix.replace(".", ""),
+            content_type=file.content_type or "application/octet-stream",
+            size_bytes=len(content),
             teacher_id=teacher_id,
         )
         db.add(resource)
         await db.flush()
 
         await db.commit()
-        await db.refresh(resource)
     except Exception as exc:
-        stored_path.unlink(missing_ok=True)
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to upload resource: {exc}")
+        try:
+            await run_in_threadpool(storage.delete_file, object_key)
+        except Exception:
+            logger.exception("Failed to clean up orphaned Garage object after resource DB failure")
+        logger.exception("Failed to save study resource metadata")
+        raise HTTPException(status_code=500, detail="Failed to save study resource") from exc
+    await db.refresh(resource)
 
     upload_status = "queued"
     try:
@@ -321,13 +349,29 @@ async def download_resource(
         return RedirectResponse(url=resource.file_path)
 
     path = UPLOAD_DIR / resource.file_path
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+    if not resource.object_key and path.is_file():
+        return FileResponse(path=str(path), filename=resource.original_filename, media_type="application/octet-stream")
 
-    return FileResponse(
-        path=str(path),
-        filename=resource.original_filename,
+    try:
+        storage = get_storage()
+        response = await run_in_threadpool(storage.open_stream, resource.object_key or resource.file_path)
+    except ObjectNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="File not found") from exc
+    except StorageError as exc:
+        raise HTTPException(status_code=503, detail="Document storage is unavailable") from exc
+    except Exception as exc:
+        logger.exception("Study resource download failed id=%s", resource_id)
+        raise HTTPException(status_code=503, detail="Document storage is unavailable") from exc
+
+    def chunks():
+        yield from stream_reader(response, 64 * 1024)
+
+    return StreamingResponse(
+        chunks(),
         media_type="application/octet-stream",
+        headers={
+            "Content-Disposition": content_disposition(resource.original_filename)
+        },
     )
 
 
@@ -343,11 +387,16 @@ async def delete_resource(
     if resource.teacher_id != auth["id"]:
         raise HTTPException(status_code=403, detail="You can only delete your own resources")
 
-    file_path = UPLOAD_DIR / resource.file_path
-
     await db.delete(resource)
     await db.commit()
 
     if resource.file_type != "youtube":
-        file_path.unlink(missing_ok=True)
+        file_path = UPLOAD_DIR / resource.file_path
+        if file_path.is_file():
+            file_path.unlink(missing_ok=True)
+        if resource.object_key:
+            try:
+                await run_in_threadpool(get_storage().delete_file, resource.object_key)
+            except Exception:
+                logger.exception("Failed to delete Garage object for study resource id=%s", resource_id)
     remove_study_resource(resource_id)
