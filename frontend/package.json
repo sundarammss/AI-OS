@@ -33,6 +33,7 @@
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/devtools-vite": "latest",
+    "@tanstack/intent": "0.5.5",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.5",
@@ -44,5 +45,10 @@
     "vite": "^8.3.4",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^5.0.3"
+  },
+  "intent": {
+    "skills": [
+      "*"
+    ]
   }
 }

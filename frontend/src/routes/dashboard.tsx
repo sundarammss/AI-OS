@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getFilteredRowModel,
-  flexRender,
+  columnFilteringFeature,
+  createFilteredRowModel,
+  createSortedRowModel,
+  globalFilteringFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  sortFn_text,
+  tableFeatures,
+  useTable,
   type ColumnDef,
+  type RowData,
   type SortingState,
 } from "@tanstack/react-table";
 import { useDashboardSummary, useRiskProfile } from "../lib/hooks";
@@ -99,9 +104,21 @@ function difficultyHeat(rating: number) {
   return "bg-emerald-500";
 }
 
+const dataTableFeatures = tableFeatures({
+  columnFilteringFeature,
+  globalFilteringFeature,
+  rowSortingFeature,
+  filteredRowModel: createFilteredRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  sortFns: {
+    alphanumeric: sortFn_alphanumeric,
+    text: sortFn_text,
+  },
+});
+
 /* ── Student Risk Table Columns ───────────────────────────────────── */
 
-const cohortColumns: ColumnDef<CohortRiskRow>[] = [
+const cohortColumns: ColumnDef<typeof dataTableFeatures, CohortRiskRow>[] = [
   {
     accessorKey: "student_name",
     header: "Student",
@@ -153,7 +170,7 @@ const cohortColumns: ColumnDef<CohortRiskRow>[] = [
 
 /* ── Course Heatmap Table Columns ─────────────────────────────────── */
 
-const courseColumns: ColumnDef<CourseDifficultyRow>[] = [
+const courseColumns: ColumnDef<typeof dataTableFeatures, CourseDifficultyRow>[] = [
   {
     accessorKey: "course_code",
     header: "Code",
@@ -195,27 +212,25 @@ const courseColumns: ColumnDef<CourseDifficultyRow>[] = [
 
 /* ── Reusable DataTable ───────────────────────────────────────────── */
 
-function DataTable<T>({
+function DataTable<T extends RowData>({
   data,
   columns,
   searchPlaceholder,
 }: {
   data: T[];
-  columns: ColumnDef<T, any>[];
+  columns: ColumnDef<typeof dataTableFeatures, T>[];
   searchPlaceholder: string;
 }) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
 
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
     state: { sorting, globalFilter },
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
   });
 
   return (
@@ -225,7 +240,7 @@ function DataTable<T>({
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--sea-ink-soft)]" />
         <input
           value={globalFilter}
-          onChange={(e) => setGlobalFilter(e.target.value)}
+          onChange={(e) => table.setGlobalFilter(e.target.value)}
           placeholder={searchPlaceholder}
           className="w-full rounded-xl border border-[var(--line)] bg-[var(--island-bg)] py-2.5 pl-10 pr-4 text-sm text-[var(--sea-ink)] placeholder:text-[var(--sea-ink-soft)] focus:outline-none focus:ring-2 focus:ring-[rgba(79,184,178,0.4)]"
         />
@@ -247,10 +262,7 @@ function DataTable<T>({
                     className="cursor-pointer select-none px-4 py-3 font-semibold text-[var(--sea-ink-soft)] transition hover:text-[var(--sea-ink)]"
                   >
                     <div className="flex items-center gap-1">
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                      <table.FlexRender header={header} />
                       <ArrowUpDown className="h-3 w-3 opacity-40" />
                     </div>
                   </th>
@@ -264,9 +276,9 @@ function DataTable<T>({
                 key={row.id}
                 className="border-b border-[var(--line)] transition hover:bg-[var(--island-bg)]"
               >
-                {row.getVisibleCells().map((cell) => (
+                {row.getAllCells().map((cell) => (
                   <td key={cell.id} className="px-4 py-3">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <table.FlexRender cell={cell} />
                   </td>
                 ))}
               </tr>
